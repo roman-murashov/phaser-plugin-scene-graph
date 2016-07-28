@@ -1,6 +1,6 @@
 
 /*
-  Scene Graph plugin v0.1.2.5 for Phaser
+  Scene Graph plugin v0.2.0.1 for Phaser
  */
 
 (function() {
@@ -12,7 +12,7 @@
   freeze = Object.freeze, seal = Object.seal;
 
   Phaser.Plugin.SceneGraph = freeze(SceneGraph = (function(superClass) {
-    var getKey, getName, group, groupCollapsed, groupEnd, join, log, none, types, version;
+    var _join, getKey, getName, group, groupCollapsed, groupEnd, join, log, none, types, version;
 
     extend(SceneGraph, superClass);
 
@@ -31,6 +31,20 @@
     groupEnd = group ? groupEnd.bind(console) : none;
 
     groupCollapsed = groupCollapsed ? groupCollapsed.bind(console) : group;
+
+    _join = [];
+
+    join = function(arr, str) {
+      var i, j, len;
+      _join.length = 0;
+      for (j = 0, len = arr.length; j < len; j++) {
+        i = arr[j];
+        if (i) {
+          _join.push(i);
+        }
+      }
+      return _join.join(str);
+    };
 
     SceneGraph.types = types = {
       0: "SPRITE",
@@ -64,7 +78,7 @@
       28: "VIDEO"
     };
 
-    SceneGraph.version = version = "0.1.2.5";
+    SceneGraph.version = version = "0.2.0.1";
 
     SceneGraph.addTo = function(game) {
       return game.plugins.add(this);
@@ -117,33 +131,28 @@
     };
 
     SceneGraph.prototype.graph = function(obj, options) {
-      var alive, child, children, collapse, constructor, count, desc, exists, hasChildren, hasLength, hasLess, j, len, length, longName, method, name, skipDead, skipNonexisting, total, type, visible;
+      var alive, child, children, collapse, description, exists, filter, hasChildren, j, len, map, method, skipDead, skipNonexisting;
       if (obj == null) {
         obj = this.game.stage;
       }
       if (options == null) {
         options = {
           collapse: true,
-          showParent: false,
+          filter: null,
+          map: null,
           skipDead: false,
           skipNonexisting: false
         };
       }
-      collapse = options.collapse, skipDead = options.skipDead, skipNonexisting = options.skipNonexisting;
-      alive = obj.alive, children = obj.children, constructor = obj.constructor, exists = obj.exists, name = obj.name, total = obj.total, type = obj.type, visible = obj.visible;
-      if ((skipDead && !obj.alive) || (skipNonexisting && !obj.exists)) {
+      collapse = options.collapse, filter = options.filter, map = options.map, skipDead = options.skipDead, skipNonexisting = options.skipNonexisting;
+      alive = obj.alive, children = obj.children, exists = obj.exists;
+      if ((skipDead && !alive) || (skipNonexisting && !exists) || (filter && !filter(obj))) {
         return;
       }
-      longName = getName(obj);
-      length = (children != null ? children.length : void 0) || 0;
-      hasChildren = length > 0;
-      hasLength = obj.length != null;
-      hasLess = total && total < length;
-      type = types[type] || '?';
-      count = hasLength ? (hasLess ? "(" + total + "/" + length + ")" : "(" + length + ")") : "";
-      desc = ((constructor != null ? constructor.name : void 0) || type) + " " + longName + " " + count;
+      hasChildren = (children != null ? children.length : void 0) > 0;
       method = hasChildren ? (collapse ? groupCollapsed : group) : log;
-      method("%c" + desc, this.css(obj));
+      description = (map ? map : this.map).call(null, obj, options);
+      method("%c" + description, this.css(obj));
       if (hasChildren) {
         for (j = 0, len = children.length; j < len; j++) {
           child = children[j];
@@ -155,19 +164,25 @@
       }
     };
 
-    SceneGraph.prototype.join = join = function(arr, str) {
-      var i;
-      return ((function() {
-        var j, len, results;
-        results = [];
-        for (j = 0, len = arr.length; j < len; j++) {
-          i = arr[j];
-          if (i) {
-            results.push(i);
-          }
+    SceneGraph.prototype.map = function(obj) {
+      var children, constructor, count, hasLength, hasLess, length, longName, total, type;
+      children = obj.children, constructor = obj.constructor, total = obj.total, type = obj.type;
+      longName = getName(obj);
+      length = (children != null ? children.length : void 0) || 0;
+      hasLength = obj.length != null;
+      hasLess = total && total < length;
+      type = types[type] || '?';
+      count = (function() {
+        switch (false) {
+          case !hasLess:
+            return "(" + total + "/" + length + ")";
+          case !hasLength:
+            return "(" + length + ")";
+          default:
+            return "";
         }
-        return results;
-      })()).join(str);
+      })();
+      return ((constructor != null ? constructor.name : void 0) || type) + " " + longName + " " + count;
     };
 
     SceneGraph.prototype.printStyles = function() {
